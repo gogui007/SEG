@@ -1,138 +1,166 @@
+// En la clase Simetrica.java
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.PrivateKey;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import org.bouncycastle.util.encoders.Hex;
-import org.bouncycastle.crypto.CipherKeyGenerator;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+
 import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.InvalidCipherTextException;
-import org.bouncycastle.crypto.KeyGenerationParameters;
-import org.bouncycastle.crypto.engines.TwofishEngine;
+import org.bouncycastle.crypto.engines.ThreefishEngine;
 import org.bouncycastle.crypto.modes.CBCBlockCipher;
-import org.bouncycastle.crypto.paddings.PKCS7Padding;
 import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher;
+import org.bouncycastle.crypto.paddings.X923Padding;
 import org.bouncycastle.crypto.params.KeyParameter;
+import org.bouncycastle.util.encoders.Hex;
 
 public class Simetrica {
-    public PrivateKey privateKey = null;
+	private static String claveHex;
 
-    public Simetrica() {
+    public static void setClaveHex(String claveHex) {
+        Simetrica.claveHex = claveHex;
     }
 
-    public void generarClave(String ficheroClave) {
-        CipherKeyGenerator genClave = new CipherKeyGenerator();
-        genClave.init(new KeyGenerationParameters(new SecureRandom(), 256));
-        byte[] claveBin = new byte[32];
-        claveBin = genClave.generateKey();
-        byte[] claveHex = Hex.encode(claveBin);
-        FileOutputStream ficheroKey = null;
+    public static String getClaveHex() {
+        return claveHex;
+    }
+    public static void generarClave(String fileName) {
+        KeyGenerator generadorClave;
+        FileOutputStream salida = null;
         try {
-            ficheroKey = new FileOutputStream(ficheroClave);
-            ficheroKey.write(claveHex);
-        } catch (FileNotFoundException e1) {
-            e1.printStackTrace();
-        } catch (IOException e) {
+            // Paso 1: Crear objeto generador
+            generadorClave = KeyGenerator.getInstance("AES");
+
+            // Paso 2: Inicializar objeto generador
+            SecureRandom aleatorio = new SecureRandom();
+            generadorClave.init(256, aleatorio);
+
+            // Paso 3: Generar clave
+            SecretKey clave = generadorClave.generateKey();
+
+            // Paso 4: Convertir clave a Hexadecimal
+            String claveHex = new String(Hex.encode(clave.getEncoded()));
+
+            // Paso 5: Almacenar clave en fichero
+            salida = new FileOutputStream(fileName);
+            salida.write(claveHex.getBytes());
+            System.out.println("Clave simetrica generada y guardada en el archivo: " + fileName);
+        } catch (NoSuchAlgorithmException | IOException e) {
             e.printStackTrace();
         } finally {
-            if (ficheroKey != null)
+            if (salida != null) {
                 try {
-                    System.out.println("La clave se ha generado correctamente");
-                    ficheroKey.close();
+                    salida.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-        }
-    }
-
-    public void cifrar(String ficheroClave, String ficheroACifrar, String ficheroCifrado) throws IOException, DataLengthException, IllegalStateException, InvalidCipherTextException {
-        byte[] claveBin;
-        byte[] claveHex = new byte[64];
-        BufferedOutputStream fichCifrado = null;
-        FileInputStream fichK = null;
-        BufferedInputStream fichACifrar = null;
-        try {
-            fichCifrado = new BufferedOutputStream(new FileOutputStream(ficheroCifrado));
-            fichK = new FileInputStream(ficheroClave);
-            fichACifrar = new BufferedInputStream(new FileInputStream(ficheroACifrar));
-            fichK.read(claveHex, 0, 64);
-            claveBin = Hex.decode(claveHex);
-            KeyParameter params = new KeyParameter(claveBin);
-            PaddedBufferedBlockCipher cifrador = new PaddedBufferedBlockCipher(new CBCBlockCipher(new TwofishEngine()), new PKCS7Padding());
-            cifrador.init(true, params);
-            //DATOS LEIDOS
-            byte[] bloqueLeido = new byte[cifrador.getBlockSize()]; // Para guardar el fragmento de fichero
-            byte[] bloqueCifrado = new byte[cifrador.getOutputSize(cifrador.getBlockSize())];
-            int leidos;
-            int cifrados = 0;
-            leidos = fichACifrar.read(bloqueLeido, 0, cifrador.getBlockSize());
-            while (leidos > 0) {
-                cifrados = cifrador.processBytes(bloqueLeido, 0, leidos, bloqueCifrado, 0);
-                fichCifrado.write(bloqueCifrado, 0, cifrados);
-                leidos = fichACifrar.read(bloqueLeido, 0, cifrador.getBlockSize());
-            }
-            cifrados = cifrador.doFinal(bloqueCifrado, 0);
-            //DATOS CIFRADOS
-            fichCifrado.write(bloqueCifrado, 0, cifrados);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                fichK.close();
-                fichCifrado.close();
-                fichACifrar.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }
-
-    public void descifrar(String ficheroClave, String ficheroADescifrar, String ficheroDescifrado) throws IOException, DataLengthException, IllegalStateException, InvalidCipherTextException {
-        byte[] claveBin;
-        byte[] claveHex = new byte[64];
-        BufferedOutputStream fichDescifrado = null;
-        FileInputStream fichK = null;
-        BufferedInputStream fichDescifrar = null;
+    public static void cifrar(String clave, String archivo_original, String archivo_cifrado) throws DataLengthException, IllegalStateException, InvalidCipherTextException {
         try {
-            fichDescifrado = new BufferedOutputStream(new FileOutputStream(ficheroDescifrado));
-            fichK = new FileInputStream(ficheroClave);
-            fichDescifrar = new BufferedInputStream(new FileInputStream(ficheroADescifrar));
-            fichK.read(claveHex, 0, 64);
-            claveBin = Hex.decode(claveHex);
-            KeyParameter params = new KeyParameter(claveBin);
-            PaddedBufferedBlockCipher cifrador = new PaddedBufferedBlockCipher(new CBCBlockCipher(new TwofishEngine()), new PKCS7Padding());
-            cifrador.init(false, params);
-            //DATOS LEIDOS
-            byte[] bloqueLeido = new byte[cifrador.getBlockSize()]; // Para guardar el fragmento de fichero
-            byte[] bloqueCifrado = new byte[cifrador.getOutputSize(cifrador.getBlockSize())];
-            int leidos;
-            int descifrados = 0;
-            leidos = fichDescifrar.read(bloqueLeido, 0, cifrador.getBlockSize());
-            while (leidos > 0) {
-                descifrados = cifrador.processBytes(bloqueLeido, 0, leidos, bloqueCifrado, 0);
-                fichDescifrado.write(bloqueCifrado, 0, descifrados);
-                leidos = fichDescifrar.read(bloqueLeido, 0, cifrador.getBlockSize());
+        	String claveHex = Simetrica.leerClave(clave);
+            // Paso 1: Decodificar clave de Hex a binario
+            byte[] claveBin = Hex.decode(claveHex);
+            // Paso 2: Generar parámetros y cargar clave
+            KeyParameter  params = new KeyParameter(claveBin);
+
+            // Paso 3: Crear motor de cifrado
+            PaddedBufferedBlockCipher cifrador = new PaddedBufferedBlockCipher(new CBCBlockCipher(new ThreefishEngine(256)), new X923Padding () );
+
+            // Paso 4: Iniciar motor de cifrado con params
+            cifrador.init(true, params); // true para cifrar
+
+            // Paso 5: Crear flujos de E/S de ficheros
+            BufferedInputStream entrada = new BufferedInputStream(
+                new FileInputStream(archivo_original));
+            BufferedOutputStream salida = new BufferedOutputStream(
+                new FileOutputStream(archivo_cifrado));
+
+            // Paso 6: Crear arrays de bytes para E/S
+            byte[] datosLeidos = new byte[cifrador.getBlockSize()];
+            byte[] datosCifrados = new byte[cifrador.getOutputSize(cifrador.getBlockSize())];
+
+            // Paso 7: Bucle de lectura, cifrado y escritura
+            int bytesLeidos;
+            while ((bytesLeidos = entrada.read(datosLeidos)) != -1) {
+                int bytesProcesados = cifrador.processBytes(datosLeidos, 0, bytesLeidos, datosCifrados, 0);
+                salida.write(datosCifrados, 0, bytesProcesados);
             }
-            descifrados = cifrador.doFinal(bloqueCifrado, 0);
-            //DATOS CIFRADOS
-            fichDescifrado.write(bloqueCifrado, 0, descifrados);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            int bytesProcesados = cifrador.doFinal(datosCifrados, 0);
+            salida.write(datosCifrados, 0, bytesProcesados);
+
+            // Paso 8: Cerrar ficheros
+            entrada.close();
+            salida.close();
+
+            System.out.println("Archivo cifrado correctamente.");
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                fichK.close();
-                fichDescifrado.close();
-                fichDescifrar.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+        }
+    }
+    public static String leerClave(String clave) {
+        try {
+            BufferedInputStream entrada = new BufferedInputStream(
+            new FileInputStream(clave));
+
+            byte[] datosClave = new byte[entrada.available()];
+            entrada.read(datosClave);
+
+            entrada.close();
+
+            return new String(datosClave);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    public static void descifrar(String clave, String archivo_cifrado, String archivo_original) throws DataLengthException, IllegalStateException, InvalidCipherTextException {
+        try {
+        	String claveHex = Simetrica.leerClave(clave);
+            // Paso 1: Decodificar clave de Hex a binario
+            byte[] claveBin = Hex.decode(claveHex);
+            // Paso 2: Generar parámetros y cargar clave
+            KeyParameter  params = new KeyParameter(claveBin);
+
+            // Paso 3: Crear motor de cifrado
+            PaddedBufferedBlockCipher cifrador = new PaddedBufferedBlockCipher(new CBCBlockCipher(new ThreefishEngine(256)), new X923Padding () );
+
+            // Paso 4: Iniciar motor de cifrado con params
+            cifrador.init(false, params); // false para descifrar
+
+            // Paso 5: Crear flujos de E/S de ficheros
+            BufferedInputStream entrada = new BufferedInputStream(
+                new FileInputStream(archivo_cifrado));
+            BufferedOutputStream salida = new BufferedOutputStream(
+                new FileOutputStream(archivo_original));
+
+            // Paso 6: Crear arrays de bytes para E/S
+            byte[] datosLeidos = new byte[cifrador.getBlockSize()];
+            byte[] datosCifrados = new byte[cifrador.getOutputSize(cifrador.getBlockSize())];
+
+            // Paso 7: Bucle de lectura, cifrado y escritura
+            int bytesLeidos;
+            while ((bytesLeidos = entrada.read(datosLeidos)) != -1) {
+                int bytesProcesados = cifrador.processBytes(datosLeidos, 0, bytesLeidos, datosCifrados, 0);
+                salida.write(datosCifrados, 0, bytesProcesados);
             }
+            int bytesProcesados = cifrador.doFinal(datosCifrados, 0);
+            salida.write(datosCifrados, 0, bytesProcesados);
+
+            // Paso 8: Cerrar ficheros
+            entrada.close();
+            salida.close();
+
+            System.out.println("Archivo descifrado correctamente.");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
+
