@@ -20,16 +20,7 @@ import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.util.encoders.Hex;
 
 public class Simetrica {
-	private static String claveHex;
-
-    public static void setClaveHex(String claveHex) {
-        Simetrica.claveHex = claveHex;
-    }
-
-    public static String getClaveHex() {
-        return claveHex;
-    }
-    public static void generarClave(String fileName) {
+	public static void generarClave(String fileName) {
         KeyGenerator generadorClave;
         FileOutputStream salida = null;
         try {
