@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.Arrays;
 
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -18,8 +19,12 @@ import org.bouncycastle.crypto.engines.RSAEngine;
 import org.bouncycastle.crypto.generators.RSAKeyPairGenerator;
 import org.bouncycastle.crypto.params.RSAKeyGenerationParameters;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
+
 import org.bouncycastle.util.encoders.Hex;
 import org.bouncycastle.crypto.AsymmetricBlockCipher;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA1Digest;
+
 
 
 public class Asimetrica {
@@ -119,4 +124,65 @@ public class Asimetrica {
             }
 		}
 	}
+	public static void firmar(String privada, String mensaje, String firma) throws FileNotFoundException, IOException, InvalidCipherTextException {
+		try (BufferedInputStream entrada = new BufferedInputStream(new FileInputStream(mensaje));
+	             BufferedOutputStream salidaFirma = new BufferedOutputStream(new FileOutputStream(firma))) {
+			Digest resumen = new SHA1Digest();
+			resumen.reset(); // reset the digest back to it's initial state
+
+			byte[] datosLeidos = new byte[resumen.getDigestSize()];
+			byte[] datosFirmados = new byte[resumen.getDigestSize()];
+
+			BufferedInputStream enClaro = new BufferedInputStream(new FileInputStream(mensaje));
+			BufferedOutputStream firmado = new BufferedOutputStream(new FileOutputStream(firma));
+
+			int leidos;
+			// bucle de lectura de bloques del fichero con método update
+			while ((leidos = enClaro.read(datosLeidos)) != -1) { // Mientras que haya cosas que firmar
+				resumen.update(datosLeidos, 0, leidos); // las actualiza, update the message digest with a block of bytes
+			}
+			// finalizar la operación de resumen y escribirlos en el fichero nombreFirma
+			resumen.doFinal(datosFirmados, 0); // close the digest, producing the final digest value
+			firmado.write(datosFirmados); // las escribo en el fichero nombreFirma
+
+			// cierro los Input, Output streams
+			enClaro.close();
+			firmado.close();
+			
+			cifrar("privada", privada, firma,"resumencifrado_"+firma);
+			System.out.println("Se ha guardado la firma cifrada en el archivo 'cifrado_" + firma + "'");
+		}
+	}
+	public static void comprobarFirmar(String publica,String mensaje,String firma) throws InvalidCipherTextException {
+		try (BufferedInputStream entrada = new BufferedInputStream(new FileInputStream(mensaje))){
+			Digest resumen = new SHA1Digest();
+			byte[] datosLeidos = new byte[resumen.getDigestSize()];
+			byte[] datosFirmados = new byte[resumen.getDigestSize()]; 
+																		
+			int leidos;
+			while ((leidos = entrada.read(datosLeidos)) != -1) {
+				resumen.update(datosLeidos, 0, leidos);
+				}
+			resumen.doFinal(datosFirmados, 0); 
+												
+			entrada.close();
+
+			descifrar("publica", publica, firma, "firmaTemporal.txt");
+
+			BufferedInputStream temporal = new BufferedInputStream(new FileInputStream("firmaTemporal.txt"));
+			byte[] hash = new byte[temporal.available()];
+
+			temporal.read(hash);
+			temporal.close();
+
+			if (Arrays.equals(datosFirmados, hash)) {
+				System.out.println("La firma es correcta");
+			} else {
+				System.out.println("La firma no es correcta");
+			}
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 }

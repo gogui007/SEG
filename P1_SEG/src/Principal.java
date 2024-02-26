@@ -110,9 +110,23 @@ public class Principal {
                                 break;
                             case 4:
                                 /*completar acciones*/
+                            	System.out.print("Indique el nombre del fichero de la clave privada: ");
+								clave = sc.next();
+								System.out.print("Indique el nombre del fichero con el mensaje en claro: ");
+								archivo_cifrado = sc.next();
+								System.out.print("Indique donde dejar el fichero para dejar la firma: ");
+								archivo_original = sc.next();
+                            	Asimetrica.firmar(clave, archivo_cifrado, archivo_original);
                                 break;
                             case 5:
                                 /*completar acciones*/
+                            	System.out.print("Indique el nombre del fichero de la clave publica: ");
+								clave = sc.next();
+								System.out.print("Indique el nombre del fichero con el mensaje en claro: ");
+								archivo_cifrado = sc.next();
+								System.out.print("Indique el nombre del fichero que contiene la firma: ");
+								archivo_original = sc.next();
+                            	Asimetrica.comprobarFirmar(clave, archivo_cifrado, archivo_original);
                                 break;
                         }
                     } while (menu2 != 0);
